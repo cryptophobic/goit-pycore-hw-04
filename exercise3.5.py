@@ -14,6 +14,7 @@ def pick_style(path: Path):
         return Fore.GREEN
 
 
+# dirs[n] is True means the current file on level n is the last file in directory
 def format_indentation(dirs: tuple) -> str:
 
     indent = len(dirs)
