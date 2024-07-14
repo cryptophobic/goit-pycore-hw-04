@@ -1,46 +1,71 @@
-import glob
 import sys
 from colorama import Fore
 import argparse
 from pathlib import *
 
 
-def format_indentation(indent: int, dirs) -> str:
-    if indent == 0:
-        return ""
-    elif indent == 1:
-        return "┗ " if dirs[0] is True else "┣ "
+def pick_style(path: Path):
+    # I have no idea why
+    # return Fore.BLUE if path.is_dir() else Fore.GREEN
+    # is not working
+    if path.is_dir():
+        return Fore.BLUE
     else:
-        length = len(dirs)
-        res = ""
-        for idx, x in enumerate(dirs):
-            if idx == length - 1:
-                res = res + format_indentation(1, (x, ))
-            else:
-                res = res + "  " if x is True else '┃ '
-
-        return res
+        return Fore.GREEN
 
 
-def recursive_walk(root: str, indent=0, dirs=()):
-    number = len(glob.glob(root + '/*'))
+def format_indentation(dirs: tuple) -> str:
 
-    for idx, path in enumerate(Path(root).iterdir()):
+    indent = len(dirs)
+
+    if indent == 1:
+        return " ┗ " if dirs[0] is True else " ┣ "
+    elif indent > 1:
+        return "".join([format_indentation((x, ))
+                        if idx == indent - 1
+                        else ("   " if x is True else " ┃ ") for idx, x in enumerate(dirs)])
+
+    return ""
+
+
+def recursive_walk(root: str, dirs=(True, )):
+    root_path = Path(root)
+    if not root_path.exists():
+        raise FileNotFoundError(f"{root_path} does not exist")
+
+    print(Fore.RESET
+          + format_indentation(dirs)
+          + ("📦" if root_path.is_dir() else "📜")
+          + pick_style(root_path)
+          + str(root_path.name)
+          + ("/" if root_path.is_dir() else ""))
+
+    if not root_path.is_dir():
+        return
+
+    sorted_list = sorted(root_path.iterdir(), key=lambda x: (not x.is_dir(), x.name))
+    number = len(sorted_list)
+
+    for idx, path in enumerate(sorted_list):
         is_the_last_file = idx == number - 1
         if path.is_dir():
-            print(Fore.RESET + format_indentation(indent, dirs + (is_the_last_file, )) + '📦' + Fore.BLUE + str(path.name) + '/')
-            recursive_walk(str(path), indent + 1, dirs + (is_the_last_file, ))
+            recursive_walk(str(path), dirs + (is_the_last_file, ))
         else:
-            print(Fore.RESET + format_indentation(indent, dirs + (is_the_last_file, )) + '📜' + Fore.GREEN + str(path.name))
+            print(
+                Fore.RESET
+                + format_indentation(dirs + (is_the_last_file, ))
+                + "📜"
+                + pick_style(path)
+                + str(path.name))
 
 
 def main(directory: str):
     try:
         recursive_walk(directory)
     except FileNotFoundError as error:
-        sys.stderr.write(f'{Fore.RESET}Path not found: {str(error)}\n')
+        sys.stderr.write(f"{Fore.RESET}Path not found: {str(error)}\n")
     except PermissionError as error:
-        sys.stderr.write(f'{Fore.RESET}Cannot read the contents: {str(error)}\n')
+        sys.stderr.write(f"{Fore.RESET}Cannot read the contents: {str(error)}\n")
 
 
 if __name__ == "__main__":
